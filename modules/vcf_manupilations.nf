@@ -58,6 +58,23 @@ process filter_vcf {
     """
 }
 
+process filter_vcf_R2 {
+    tag "filter_vcf"
+    time { 12.h * task.attempt }
+    container = 'quay.io/eqtlcatalogue/genimpute:v20.06.1'
+    publishDir "${params.outdir}/vcf", mode: 'copy'
+
+    input:
+    file(vcf) 
+
+    output:
+    file ("${vcf.simpleName}_filtered.vcf.gz")
+
+    """
+    bcftools +fill-tags $vcf | bcftools filter -i 'MAF[0] > 0.01' | bcftools view -e 'GT~"\\."' -Oz -o ${vcf.simpleName}_filtered.vcf.gz 
+    """
+}
+
 process extract_samples_from_vcf {
     tag "extract_samples"
     publishDir "${params.outdir}/vcf", mode: 'copy'
@@ -91,5 +108,22 @@ process update_format {
 
     """
     bcftools annotate -x "^FORMAT/GT,FORMAT/DS" -Oz -o ${vcf.simpleName}_annotated.vcf.gz $vcf
+    """
+}
+
+process update_format_R2 {
+    tag "update_format"
+    time { 12.h * task.attempt }
+    container = 'quay.io/eqtlcatalogue/genimpute:v20.06.1'
+    // publishDir "${params.outdir}/vcf", mode: 'copy'
+
+    input:
+    file(vcf) 
+
+    output:
+    file ("${vcf.simpleName}_annotated.vcf.gz")
+
+    """
+    bcftools annotate -x "^FORMAT/GT,FORMAT/DS" $vcf | bcftools filter -i 'INFO/R2 > 0.4' -Oz -o ${vcf.simpleName}_annotated.vcf.gz
     """
 }
